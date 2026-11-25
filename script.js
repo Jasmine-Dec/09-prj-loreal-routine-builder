@@ -5,7 +5,6 @@ const productsContainer = document.getElementById("productsContainer");
 const selectedProductsList = document.getElementById("selectedProductsList");
 const clearSelectedBtn = document.getElementById("clearSelected");
 const generateRoutineBtn = document.getElementById("generateRoutine");
-const rtlToggleBtn = document.getElementById("rtlToggle");
 const chatForm = document.getElementById("chatForm");
 const userInput = document.getElementById("userInput");
 const chatWindow = document.getElementById("chatWindow");
@@ -13,46 +12,64 @@ const chatWindow = document.getElementById("chatWindow");
 const workerUrl = "https://loreal-routine.jasmined1256.workers.dev/";
 
 const STORAGE_KEY = "selectedProducts";
-const DIRECTION_KEY = "textDirection";
 
-/* Apply LTR or RTL layout direction and update the toggle button */
-function applyTextDirection(direction) {
-  const isRtl = direction === "rtl";
-  document.documentElement.dir = isRtl ? "rtl" : "ltr";
-  rtlToggleBtn.classList.toggle("active", isRtl);
-  rtlToggleBtn.setAttribute("aria-pressed", String(isRtl));
+/* Common right-to-left (RTL) language codes */
+const RTL_LANGUAGES = [
+  "ar",
+  "arc",
+  "ckb",
+  "dv",
+  "fa",
+  "he",
+  "iw",
+  "khw",
+  "ks",
+  "ku",
+  "mzn",
+  "nqo",
+  "pnb",
+  "ps",
+  "sd",
+  "ug",
+  "ur",
+  "yi",
+  "ji",
+];
 
-  const label = rtlToggleBtn.querySelector("span");
-  if (label) {
-    label.textContent = isRtl ? "RTL Mode: On" : "RTL Mode";
+/* Check whether a language tag (e.g. "ar-EG" or "he") is an RTL language */
+function isRtlLanguage(langTag) {
+  if (!langTag) {
+    return false;
   }
+
+  const normalized = langTag.toLowerCase();
+  const baseLanguage = normalized.split("-")[0];
+
+  return RTL_LANGUAGES.includes(baseLanguage) || normalized.includes("-arab");
 }
 
-/* Load saved text direction preference from localStorage */
-function loadTextDirection() {
-  try {
-    const saved = localStorage.getItem(DIRECTION_KEY);
-    if (saved === "rtl" || saved === "ltr") {
-      return saved;
-    }
-  } catch (error) {
-    // Ignore storage errors in restricted browsing modes
-  }
-  return document.documentElement.dir === "rtl" ? "rtl" : "ltr";
+/* Detect the user's language and switch to RTL only when an RTL language is active */
+function applyLanguageDirection() {
+  const htmlLang = document.documentElement.lang;
+  const browserLang = navigator.languages?.[0] || navigator.language || "en";
+
+  // Prefer the document lang if translation changed it from the default "en"
+  const activeLanguage =
+    htmlLang && htmlLang.toLowerCase() !== "en" ? htmlLang : browserLang;
+
+  document.documentElement.dir = isRtlLanguage(activeLanguage) ? "rtl" : "ltr";
 }
 
-applyTextDirection(loadTextDirection());
+applyLanguageDirection();
 
-/* Toggle between LTR and RTL mode */
-rtlToggleBtn.addEventListener("click", () => {
-  const nextDirection =
-    document.documentElement.dir === "rtl" ? "ltr" : "rtl";
-  applyTextDirection(nextDirection);
-  try {
-    localStorage.setItem(DIRECTION_KEY, nextDirection);
-  } catch (error) {
-    // Ignore storage errors in restricted browsing modes
-  }
+/* Also watch for <html lang="..."> updates (for example, from browser translation) */
+const languageObserver = new MutationObserver(() => {
+  applyLanguageDirection();
+});
+
+languageObserver.observe(document.documentElement, {
+  attributes: true,
+  attributeFilter: ["lang"],
 });
 
 /* Load saved product selections from localStorage */
